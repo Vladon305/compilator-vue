@@ -6,10 +6,10 @@ import NumberNode from "./AST/NumberNode";
 import VariableNode from "./AST/VariableNode";
 import BinOperationNode from "./AST/BinOperationNode";
 import UnarOperationNode from "./AST/UnarOperationNode";
-import PropertyNode from "./ast/PropiertyNode";
 import IdentifierNode from "./ast/IdentifierNode";
-import ObjectExpressionNode from "./ast/ObjectNode";
 import LiteralNode from "./ast/LiteralNode";
+import ObjectExpressionNode from "./ast/ObjectNode";
+import PropertyNode from "./ast/PropiertyNode";
 
 export default class Parser {
     constructor(tokens: Token[]) {
@@ -20,13 +20,15 @@ export default class Parser {
     pos: number = 0;
     scope: any = {};
 
-    ast: any
+    ast: any = []
 
-    match(...expected: TokenType[]): Token | null {
+    match(expected: TokenType[], isChangePos: boolean = false): Token | null {
         if (this.pos < this.tokens.length) {
             const currentToken = this.tokens[this.pos];
             if (expected.find((type) => type.name === currentToken.type.name)) {
-                this.pos += 1;
+                if (isChangePos) {
+                    this.pos += 1;
+                }
                 return currentToken;
             }
         }
@@ -34,11 +36,25 @@ export default class Parser {
     }
 
     require(...expected: TokenType[]): Token {
-        const token = this.match(...expected);
+        const token = this.match(expected);
         if (!token) {
             throw new Error(`на позиции ${this.pos} ожидается ${expected[0].name}`);
         }
         return token;
+    }
+
+    get(relativePosition: number) {
+        const position = this.pos + relativePosition
+        if (position >= this.tokens.length) throw  new Error('');
+        return this.tokens[position];
+    }
+
+    getTokenByPos(position: number) {
+        const token = this.tokens[position];
+        if (!token) {
+            throw new Error(`на позиции ${this.pos} не найден токен`);
+        }
+        return token
     }
 
     // parseVariableOrNumber(): ExpressionNode {
@@ -85,8 +101,7 @@ export default class Parser {
     // }
 
     parseExpression(): ExpressionNode {
-        if (this.match(tokenTypesList.LCURLYBRACKET) !== null) {
-            this.pos -= 1;
+        if (this.match([tokenTypesList.LCURLYBRACKET]) !== null) {
             while (this.pos < this.tokens.length) {
                 // вызываем функцию `walk`, которая возвращает узел
                 // помещаем этот узел в `params`
@@ -113,6 +128,7 @@ export default class Parser {
     parseCode(): ExpressionNode {
         const root = new StatementsNode();
         while (this.pos < this.tokens.length) {
+            console.log('parse')
             const codeNode = this.parseExpression();
             root.addNode(codeNode);
         }
@@ -162,46 +178,54 @@ export default class Parser {
     }
 
     walk(): any {
-        if (this.match(tokenTypesList.LCURLYBRACKET)) {
-            this.pos -= 1
+        // // console.log(this.match([tokenTypesList.LCURLYBRACKET], true))
+        // let token = this.tokens[this.pos];
+        // console.log(token)
+        if (this.match([tokenTypesList.LCURLYBRACKET])) {
             const object = new ObjectExpressionNode(this.pos, this.pos, [])
 
+            //Набиваем массив properties
             while (this.pos < this.tokens.length) {
                 this.pos += 1;
                 let token = this.tokens[this.pos];
+                console.log(token)
                 if (token.type.name === tokenTypesList.COLON.name) {
-                    this.pos += 1;
-                    if (this.match(tokenTypesList.LCURLYBRACKET) !== null) {
+                    this.pos -= 1;
+                    const key = new IdentifierNode(this.pos, this.pos, this.require(tokenTypesList.VARIABLE).text)
+                    const value = new LiteralNode(this.pos, this.pos, token.text)
+
+                    if (this.match([tokenTypesList.LCURLYBRACKET], true) !== null) {
 
                     } else {
-
+                        value.changeValue('value', this.getTokenByPos(this.pos).text)
                     }
+                    const property = new PropertyNode(this.pos, this.pos, key, value)
+                    object.pushNode(property)
                 }
-                const commaToken = this.match(tokenTypesList.COMMA)
+                const commaToken = this.match([tokenTypesList.COMMA])
 
-                object.pushNode(this.walk())
             }
             return object
         }
-        if (this.match(tokenTypesList.VARIABLE)) {
-            this.pos -= 1
+        if (this.match([tokenTypesList.VARIABLE])) {
             const token = this.require(tokenTypesList.VARIABLE)
+            this.pos++
             return new IdentifierNode(this.pos, this.pos, token.text);
         }
-        if (this.match(tokenTypesList.STRINGSB)) {
-            this.pos -= 1
-            const token = this.require(tokenTypesList.STRINGSB)
-            return new LiteralNode(this.pos, this.pos, token.text);
-        }
-        if (this.match(tokenTypesList.COLON)) {
-            if (this.match(tokenTypesList.VARIABLE)) {
-                this.pos -= 1
-                const token = this.require(tokenTypesList.VARIABLE)
-                return new IdentifierNode(this.pos, this.pos, token.text);
-            }
-            const token = this.require(tokenTypesList.STRINGSB)
-            return new PropertyNode(this.pos, this.pos, token.text);
-        }
+        // if (this.match([tokenTypesList.STRINGSB])) {
+        //     this.pos -= 1
+        //     const token = this.require(tokenTypesList.STRINGSB)
+        //     return new LiteralNode(this.pos, this.pos, token.text);
+        // }
+        // if (this.match([tokenTypesList.COLON])) {
+        //     if (this.match([tokenTypesList.VARIABLE])) {
+        //         this.pos -= 1
+        //         const token = this.require(tokenTypesList.VARIABLE)
+        //         return new IdentifierNode(this.pos, this.pos, token.text);
+        //     }
+        //     const token = this.require(tokenTypesList.STRINGSB)
+        //     return new PropertyNode(this.pos, this.pos, token.text);
+        // }
 
 
         // если нам встретился токен с неизвестным типом
@@ -209,7 +233,7 @@ export default class Parser {
     }
 
     parseObject() {
-        if (this.match(tokenTypesList.LCURLYBRACKET) != null) {
+        if (this.match([tokenTypesList.LCURLYBRACKET]) != null) {
             // while (this.pos) {
             //
             // }

@@ -1,5 +1,5 @@
 import Lexer from "./Lexer";
-import Parser from "./Parser";
+import Parser from "./parser";
 
 const code = `{
     name: '',
@@ -29,14 +29,18 @@ const code = `{
   }
 }`;
 
-const lexer = new Lexer(code);
+const code2 = `{
+    name: 'a',
+    }`
+
+const lexer = new Lexer(code2);
 
 lexer.lexAnalysis();
 
-console.log(lexer.tokenList);
 
-// const parser = new Parser(lexer.tokenList);
+const parser = new Parser(lexer.tokenList);
 
-// const rootNode = parser.parseCode();
+const rootNode = parser.parseCode();
+console.log(rootNode);
 
 // parser.run(rootNode);

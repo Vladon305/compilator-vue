@@ -9,4 +9,13 @@ export default class ExpressionNode {
         this.start = start;
         this.end = end;
     }
+
+    changeEnd(key: 'start' | 'end', value: number) {
+        this[key] = value
+    }
+
+    changeValue(key: string, value: any) {
+        //@ts-ignore
+        this[key] = value
+    }
 }
